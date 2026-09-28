@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/manrope": "latest",
+    "@fontsource/space-grotesk": "latest",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
     "motion": "latest",
