@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# Replace with the real production domain before launch.
