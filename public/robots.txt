@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-# Replace with the real production domain before launch.
+Sitemap: https://pavelfilichev8-cmd.github.io/laughing-rotary-phone/sitemap.xml
