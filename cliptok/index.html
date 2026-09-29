@@ -344,4 +344,4 @@ window.searchTag=async tag=>{const clean=String(tag).replace(/^#/,'').trim();con
 window.installApp=()=>{if(window.__deferredPrompt){window.__deferredPrompt.prompt();window.__deferredPrompt=null}else toast('Браузер уже установил приложение или не поддерживает установку')};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__deferredPrompt=e});
 window.addEventListener('appinstalled',()=>toast('ClipTok установлен'));
-</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}</script></body></html></body></html>
+</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}</script><script type="module" src="./production.js"></script></body></html></body></html>
