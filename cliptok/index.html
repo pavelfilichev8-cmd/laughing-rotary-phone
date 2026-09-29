@@ -87,7 +87,9 @@ async function renderExplore(){const r=await supabase.from('videos').select('*,p
 let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnections=new Map(),pendingIce=new Map(),liveUserId=null; Object.defineProperty(window,'liveRoom',{configurable:true,get:()=>liveRoom});
 
 async function renderLive(){
- const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').order('created_at',{ascending:false}).limit(30);
+ const staleAt=new Date(Date.now()-45000).toISOString();
+ await supabase.from('live_rooms').update({status:'ended',ended_at:new Date().toISOString()}).eq('status','live').lt('last_seen_at',staleAt);
+ const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').gte('last_seen_at',staleAt).order('created_at',{ascending:false}).limit(30);
  const rooms=r.data||[];
  const cards=rooms.map(x=>`<div class="live-card"><span class="live-badge">● LIVE</span><h3>${esc(x.title)}</h3><p>@${esc(x.profiles?.username||'creator')} · ${esc(x.category||'general')}</p><button class="ghost" style="margin-top:12px" onclick="window.joinLive('${x.id}')">Смотреть эфир</button></div>`).join('');
  document.querySelector('#root').innerHTML=`<section class="page"><div class="row"><div><h1>LIVE</h1><p class="muted">Прямые эфиры ClipTok в реальном времени.</p></div><div class="grow"></div><button class="primary" onclick="window.startLive()">＋ Начать эфир</button></div><div class="live-grid">${cards||'<div class="empty">Сейчас нет активных эфиров. Создай первый.</div>'}</div></section>`;
@@ -124,13 +126,17 @@ async function openLiveRoom(roomId,isHost=false){
    translationPanel(isHost)+
    '</div><div class="card live-chat"><h3>Чат эфира</h3><div id="liveChatList" class="live-chat-list">'+(messages||'<div class="empty">Чат пуст.</div>')+'</div><div class="row">'+chatInput+'<button class="primary" onclick="window.sendLiveChat()">Отправить</button></div></div></div></section>';
  await connectLive(roomId,isHost);
+ if(isHost)startLiveHeartbeat();
  const src=document.querySelector('#translateSource');
  const tar=document.querySelector('#translateTarget');
- if(src)src.addEventListener('change',function(){translationSource=this.value});
+ if(src)src.addEventListener('change',function(){translationSource=this.value,last_seen_at:new Date().toISOString()});
  if(tar)tar.addEventListener('change',function(){translationTarget=this.value});
  if(isHost){if(src)src.value='ru';if(tar)tar.value='en';}
  else{if(src)src.style.display='none';if(tar)tar.value='ru';}
 }
+let liveHeartbeatTimer=null;
+function startLiveHeartbeat(){clearInterval(liveHeartbeatTimer);if(liveRole!=='host'||!liveRoom)return;const beat=async()=>{if(liveRole==='host'&&liveRoom&&session?.user?.id)await supabase.from('live_rooms').update({last_seen_at:new Date().toISOString()}).eq('id',liveRoom.id).eq('host_id',session.user.id).eq('status','live')};beat();liveHeartbeatTimer=setInterval(beat,10000)}
+function stopLiveHeartbeat(){clearInterval(liveHeartbeatTimer);liveHeartbeatTimer=null}
 async function connectLive(roomId,isHost){
  if(liveChannel)try{await supabase.removeChannel(liveChannel)}catch{}
  // Для ведущего сначала получаем медиапоток, затем допускаем зрителей.
@@ -194,6 +200,7 @@ window.sendLiveChat=async()=>{
  if(r.error)return toast(r.error.message);document.querySelector('#liveChatInput').value='';const username=currentProfile?.username||'user';await liveChannel.send({type:'broadcast',event:'signal',payload:{kind:'chat',from:liveUserId,username,body}});
 };
 async function cleanupLiveConnection(opts={}){
+ stopLiveHeartbeat();
  stopSpeechRecognition();
  try{window.speechSynthesis?.cancel()}catch{}
  try{if(window.__cliptokSfu?.disconnect)await window.__cliptokSfu.disconnect()}catch(e){console.warn('SFU disconnect',e)}
