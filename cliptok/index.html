@@ -319,4 +319,29 @@ function startGlobalRealtime(){if(!session)return;if(window.__notifChannel)supab
 const baseInit=initSession;initSession=async()=>{await baseInit();if(session)startGlobalRealtime()};window.initSession=initSession;
 window.forgotPassword=async()=>{const email=document.querySelector('#authEmail')?.value.trim();if(!email)return toast('Введите email');const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)toast(error.message);else toast('Ссылка отправлена на почту')};
 const baseAuth=authRequired;authRequired=()=>{baseAuth();const m=document.querySelector('#authModal .modal');if(m&&!m.querySelector('.forgot'))m.insertAdjacentHTML('beforeend','<button class="ghost full forgot" onclick="window.forgotPassword()">Восстановить пароль</button>')};window.authRequired=authRequired;
+
+// ClipTok platform upgrade v2
+let feedPage=0,feedLoading=false;
+async function loadMoreForYou(reset=false){
+ if(feedLoading)return; feedLoading=true;
+ try{
+  const {data,error}=await supabase.rpc('get_for_you',{p_user_id:session?.user?.id||null,p_limit:20,p_offset:reset?0:feedPage*20});
+  if(error) throw error;
+  if(reset)feedPage=0; else feedPage++;
+  const root=document.querySelector('.feed');
+  if(root&&data?.length){ if(reset)root.innerHTML=''; data.forEach(v=>root.insertAdjacentHTML('beforeend',videoHTML({...v,profiles:{username:'creator'}}))); refreshFeedUX(); }
+ }catch(e){console.warn('feed',e)}
+ finally{feedLoading=false}
+}
+window.trackVideoView=async(videoId,watchSeconds=0,completed=false)=>{
+ const key='viewed:'+videoId; if(sessionStorage.getItem(key))return;
+ sessionStorage.setItem(key,'1');
+ await supabase.rpc('increment_video_view',{p_video_id:videoId,p_user_id:session?.user?.id||null,p_watch_seconds:watchSeconds,p_completed:completed});
+};
+document.addEventListener('timeupdate',e=>{const v=e.target;if(!(v instanceof HTMLVideoElement))return;const id=v.closest('.video')?.dataset.id;if(id&&v.currentTime>1)window.trackVideoView(id,v.currentTime,v.duration&&v.currentTime/v.duration>.85)});
+document.addEventListener('click',e=>{const h=e.target.closest('[data-hashtag]');if(h){e.preventDefault();window.searchTag(h.dataset.hashtag)}});
+window.searchTag=async tag=>{const clean=String(tag).replace(/^#/,'').trim();const {data,error}=await supabase.from('video_hashtags').select('video_id, videos(*)').eq('hashtag',clean).limit(50);if(error)return toast(error.message);const videos=(data||[]).map(x=>x.videos).filter(Boolean);toast('#'+clean+' · '+videos.length);document.querySelector('.feed')?.replaceChildren(...videos.map(v=>{const d=document.createElement('div');d.innerHTML=videoHTML({...v,profiles:{username:'creator'}});return d.firstElementChild}));refreshFeedUX()};
+window.installApp=()=>{if(window.__deferredPrompt){window.__deferredPrompt.prompt();window.__deferredPrompt=null}else toast('Браузер уже установил приложение или не поддерживает установку')};
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__deferredPrompt=e});
+window.addEventListener('appinstalled',()=>toast('ClipTok установлен'));
 </script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}</script></body></html></body></html>
