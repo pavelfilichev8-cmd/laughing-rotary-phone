@@ -1,23 +1,30 @@
-# Metal Hub SPb
+# World Connect — Global Video Roulette
 
-Production-ready frontend foundation for a scrap metal collection, removal and dismantling service in Saint Petersburg and Leningrad Region.
+Free MVP of a worldwide 1-to-1 video roulette.
+
+## Live
+- Render: https://world-connect-roulette.onrender.com
+- GitHub: https://github.com/pavelfilichev8-cmd/laughing-rotary-phone
 
 ## Included
-- Responsive premium UI
-- React + TypeScript + Vite
-- Motion micro-interactions
-- Lucide icons
-- Separate routes for services and metal categories
-- Lead forms with success state
-- Calculator-ready UI without invented market prices
-- SEO-ready metadata and sitemap placeholder
-- GitHub Actions build check
+- WebRTC camera/microphone
+- Supabase Realtime signaling and matchmaking
+- country/language filters
+- realtime text chat
+- browser speech recognition + live subtitles
+- optional text translation provider
+- STUN + optional TURN configuration
+- responsive dark UI
+- no recording by default
+
+## Free architecture
+Supabase Free provides Realtime with a free quota; WebRTC uses STUN/TURN for connectivity. A TURN server may be added for networks where direct peer-to-peer connectivity fails.
+
+## Important
+A normal browser cannot force a global HTTP/SOCKS5 proxy for WebRTC media. Use TURN for WebRTC relay. Proxy gateway support can be added server-side later.
 
 ## Local
-```bash
-npm install
-npm run dev
-npm run build
-```
+Open `index.html` directly for the static UI, or serve the folder with any static HTTP server. Camera/microphone require a secure context such as HTTPS or localhost.
 
-Before publishing, replace demo phone/domain, connect real pricing, forms/CRM, analytics, legal copy and approved service conditions.
+## Database
+The Supabase project contains `wvr_queue`, `wvr_matches` and `wvr_reports` plus RPC functions for matchmaking/queue cleanup.
