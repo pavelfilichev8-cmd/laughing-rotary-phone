@@ -53,15 +53,6 @@ function videoHTML(v){
  return `<article class="video">${media}<div class="gradient"></div><div class="info"><b>@${esc(p.username||'creator')}${p.verified?' ✓':''}</b><h2>${esc(v.caption||'Без описания')}</h2><p>♬ ${esc(v.music_name||'Original sound')}</p></div><div class="actions"><button class="${liked.has(v.id)?'hot':''}" onclick="window.toggleLike('${v.id}')">♥<em>${fmt(v.likes_count)}</em></button><button onclick="window.openComments('${v.id}')">●<em>${fmt(v.comments_count)}</em></button><button class="${saved.has(v.id)?'hot':''}" onclick="window.toggleSave('${v.id}')">▣<em>Сохранить</em></button><button onclick="window.shareVideo('${v.id}')">↗<em>Share</em></button></div></article>`;
 }
 async function showTab(tab){
- if(liveRoom && tab!=='live'){
-   try{
-     if(liveRole==='host' && session && liveRoom.host_id===session.user.id){
-       await window.endLive();
-     }else{
-       await window.leaveLive();
-     }
-   }catch(e){console.warn('LIVE exit on navigation failed',e)}
- }
  currentTab=tab;
  document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.tab===tab)});
  const root=document.querySelector('#root');
@@ -87,9 +78,7 @@ async function renderExplore(){const r=await supabase.from('videos').select('*,p
 let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnections=new Map(),pendingIce=new Map(),liveUserId=null; Object.defineProperty(window,'liveRoom',{configurable:true,get:()=>liveRoom});
 
 async function renderLive(){
- const staleAt=new Date(Date.now()-45000).toISOString();
- await supabase.from('live_rooms').update({status:'ended',ended_at:new Date().toISOString()}).eq('status','live').lt('last_seen_at',staleAt);
- const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').gte('last_seen_at',staleAt).order('created_at',{ascending:false}).limit(30);
+ const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').order('created_at',{ascending:false}).limit(30);
  const rooms=r.data||[];
  const cards=rooms.map(x=>`<div class="live-card"><span class="live-badge">● LIVE</span><h3>${esc(x.title)}</h3><p>@${esc(x.profiles?.username||'creator')} · ${esc(x.category||'general')}</p><button class="ghost" style="margin-top:12px" onclick="window.joinLive('${x.id}')">Смотреть эфир</button></div>`).join('');
  document.querySelector('#root').innerHTML=`<section class="page"><div class="row"><div><h1>LIVE</h1><p class="muted">Прямые эфиры ClipTok в реальном времени.</p></div><div class="grow"></div><button class="primary" onclick="window.startLive()">＋ Начать эфир</button></div><div class="live-grid">${cards||'<div class="empty">Сейчас нет активных эфиров. Создай первый.</div>'}</div></section>`;
@@ -121,22 +110,18 @@ async function openLiveRoom(roomId,isHost=false){
  const controls='<button class="ghost live-action" onclick="window.toggleLiveMic()" id="liveMicBtn">🎤 Микрофон</button><button class="ghost live-action" onclick="window.toggleLiveCamera()" id="liveCamBtn">📷 Камера</button><button class="ghost live-action" onclick="window.switchLiveCamera()" id="liveSwitchBtn">🔄 Камера</button>'+(isHost ? '<button class="danger live-action live-end" onclick="window.endLive()">🔴 Завершить эфир</button>' : '<button class="danger live-action" onclick="window.leaveLive()">🚪 Выйти из эфира</button>');
  const chatInput=session ? '<input id="liveChatInput" class="grow" placeholder="Написать сообщение…">' : '<input id="liveChatInput" class="grow" placeholder="Войдите для чата" disabled>';
  document.querySelector('#root').innerHTML =
-   '<section class="page"><div class="row"><div><div class="live-badge">● LIVE</div><h1>'+esc(liveRoom.title)+'</h1><p class="muted">@'+esc(liveRoom.profiles?.username||'creator')+' · '+esc(liveRoom.category||'general')+'</p></div><div class="grow"></div><button class="ghost" onclick="window.exitLiveRoom()">← LIVE</button></div>'+
+   '<section class="page"><div class="row"><div><div class="live-badge">● LIVE</div><h1>'+esc(liveRoom.title)+'</h1><p class="muted">@'+esc(liveRoom.profiles?.username||'creator')+' · '+esc(liveRoom.category||'general')+'</p></div><div class="grow"></div><button class="ghost" onclick="window.show(\'live\')">← LIVE</button></div>'+
    '<div class="live-layout"><div><div class="live-player" id="liveStage">'+media+'</div><div class="live-controls"><span class="live-stat" id="viewerCount">● 1 зритель</span><span class="live-stat">Realtime</span>'+controls+'</div>'+
    translationPanel(isHost)+
    '</div><div class="card live-chat"><h3>Чат эфира</h3><div id="liveChatList" class="live-chat-list">'+(messages||'<div class="empty">Чат пуст.</div>')+'</div><div class="row">'+chatInput+'<button class="primary" onclick="window.sendLiveChat()">Отправить</button></div></div></div></section>';
  await connectLive(roomId,isHost);
- if(isHost)startLiveHeartbeat();
  const src=document.querySelector('#translateSource');
  const tar=document.querySelector('#translateTarget');
- if(src)src.addEventListener('change',function(){translationSource=this.value,last_seen_at:new Date().toISOString()});
+ if(src)src.addEventListener('change',function(){translationSource=this.value});
  if(tar)tar.addEventListener('change',function(){translationTarget=this.value});
  if(isHost){if(src)src.value='ru';if(tar)tar.value='en';}
  else{if(src)src.style.display='none';if(tar)tar.value='ru';}
 }
-let liveHeartbeatTimer=null;
-function startLiveHeartbeat(){clearInterval(liveHeartbeatTimer);if(liveRole!=='host'||!liveRoom)return;const beat=async()=>{if(liveRole==='host'&&liveRoom&&session?.user?.id)await supabase.from('live_rooms').update({last_seen_at:new Date().toISOString()}).eq('id',liveRoom.id).eq('host_id',session.user.id).eq('status','live')};beat();liveHeartbeatTimer=setInterval(beat,10000)}
-function stopLiveHeartbeat(){clearInterval(liveHeartbeatTimer);liveHeartbeatTimer=null}
 async function connectLive(roomId,isHost){
  if(liveChannel)try{await supabase.removeChannel(liveChannel)}catch{}
  // Для ведущего сначала получаем медиапоток, затем допускаем зрителей.
@@ -200,7 +185,6 @@ window.sendLiveChat=async()=>{
  if(r.error)return toast(r.error.message);document.querySelector('#liveChatInput').value='';const username=currentProfile?.username||'user';await liveChannel.send({type:'broadcast',event:'signal',payload:{kind:'chat',from:liveUserId,username,body}});
 };
 async function cleanupLiveConnection(opts={}){
- stopLiveHeartbeat();
  stopSpeechRecognition();
  try{window.speechSynthesis?.cancel()}catch{}
  try{if(window.__cliptokSfu?.disconnect)await window.__cliptokSfu.disconnect()}catch(e){console.warn('SFU disconnect',e)}
@@ -236,11 +220,6 @@ window.switchLiveCamera=async()=>{
   toast(next==='environment'?'Задняя камера':'Фронтальная камера');
  }catch(e){toast('Не удалось переключить камеру: '+(e.message||e.name))}
 };
-window.exitLiveRoom=async()=>{
-  if(liveRole==='host'&&liveRoom){ await window.endLive(); return; }
-  if(liveRoom){ await window.leaveLive(); return; }
-  await window.show('live');
-};
 window.leaveLive=async()=>{if(!liveRoom)return;await cleanupLiveConnection({closeView:true});toast('Вы вышли из эфира')};
 window.endLive=async()=>{
  if(!session||!liveRoom||liveRoom.host_id!==session.user.id)return;
@@ -250,15 +229,7 @@ window.endLive=async()=>{
  try{await supabase.from('live_streams').update({status:'ended',ended_at:endedAt}).eq('room_id',roomId)}catch{}
  await cleanupLiveConnection({closeView:true});toast('Эфир завершён');
 };
-window.addEventListener('pagehide',()=>{
- try{
-   if(liveRoom&&liveRole==='host'&&session&&liveRoom.host_id===session.user.id&&session.access_token){
-     fetch(SUPABASE_URL+'/rest/v1/live_rooms?id=eq.'+encodeURIComponent(liveRoom.id),{method:'PATCH',keepalive:true,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'ended',ended_at:new Date().toISOString()})}).catch(()=>{});
-   }
- }catch{}
- try{localStream?.getTracks?.().forEach(t=>t.stop())}catch{}
- try{peerConnections.forEach(pc=>pc.close())}catch{}
-});
+window.addEventListener('pagehide',()=>{try{localStream?.getTracks?.().forEach(t=>t.stop())}catch{};try{peerConnections.forEach(pc=>pc.close())}catch{}});
 
 window.joinLive=async id=>{if(!session){authRequired();return}await openLiveRoom(id,false)};
 
