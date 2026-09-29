@@ -80,7 +80,7 @@ let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnection
 async function renderLive(){
  const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').order('created_at',{ascending:false}).limit(30);
  const rooms=r.data||[];
- const cards=rooms.map(x=>{const safeCat=(x.category&&/^https?:\\/\\//i.test(x.category))?'general':String(x.category||'general').slice(0,40);return \`<div class="live-card"><span class="live-badge">● LIVE</span><h3>\${esc(x.title)}</h3><p>@\${esc(x.profiles?.username||'creator')} · \${esc(safeCat)}</p><button class="ghost" style="margin-top:12px" onclick="window.joinLive('\${x.id}')">Смотреть эфир</button></div>\`}).join('');
+ const cards=rooms.map(x=>`<div class="live-card"><span class="live-badge">● LIVE</span><h3>${esc(x.title)}</h3><p>@${esc(x.profiles?.username||'creator')} · ${esc(x.category||'general')}</p><button class="ghost" style="margin-top:12px" onclick="window.joinLive('${x.id}')">Смотреть эфир</button></div>`).join('');
  document.querySelector('#root').innerHTML=`<section class="page"><div class="row"><div><h1>LIVE</h1><p class="muted">Прямые эфиры ClipTok в реальном времени.</p></div><div class="grow"></div><button class="primary" onclick="window.startLive()">＋ Начать эфир</button></div><div class="live-grid">${cards||'<div class="empty">Сейчас нет активных эфиров. Создай первый.</div>'}</div></section>`;
 }
 window.startLive=async()=>{
@@ -90,11 +90,7 @@ window.startLive=async()=>{
 
 window.createLiveRoom=async()=>{
  const title=liveTitle.value.trim();if(!title)return toast('Введите название эфира');
- const rawDesc=liveDesc.value.trim(),rawCategory=liveCategory.value.trim()||'general';
- if(/access_token=|refresh_token=|localhost:\\d+/i.test(rawDesc+' '+rawCategory)){return toast('Нельзя добавлять ссылки с токенами или localhost');}
- const cleanCategory=rawCategory.replace(/^https?:\\/\\//i,'').slice(0,40)||'general';
- const cleanDescription=rawDesc.slice(0,500);
- const r=await supabase.from('live_rooms').insert({host_id:session.user.id,title:title.slice(0,120),description:cleanDescription,category:cleanCategory,status:'live'}).select().single();
+ const r=await supabase.from('live_rooms').insert({host_id:session.user.id,title,description:liveDesc.value.trim(),category:liveCategory.value.trim()||'general',status:'live'}).select().single();
  if(r.error)return toast(r.error.message);
  liveCreateModal.remove(); await openLiveRoom(r.data.id,true);
 };
