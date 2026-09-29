@@ -173,6 +173,8 @@ function translationPanel(isHost){
  return '<div class="translate-panel"><div class="translate-head"><b>🌐 Перевод речи</b><span class="translate-live" id="translateStatus">'+(isHost?'● Ведущий передаёт речь':'● Перевод включён')+'</span><span class="grow"></span><select id="translateSource" class="translate-select" title="Язык ведущего">'+langs+'</select><select id="translateTarget" class="translate-select" title="Язык перевода">'+langs+'</select><button class="ghost" onclick="window.toggleTranslation()">'+(isHost?'🎙️ Запустить/остановить':'🔊 Вкл/выкл звук')+'</button></div><div class="translate-text" id="translateText">Здесь появится перевод речи в реальном времени…</div></div>';
 }
 
+const SPEECH_LANG={ru:'ru-RU',en:'en-US',de:'de-DE',fr:'fr-FR',es:'es-ES',it:'it-IT',pt:'pt-PT',pl:'pl-PL',nl:'nl-NL',fi:'fi-FI',sv:'sv-SE',da:'da-DK',no:'nb-NO',cs:'cs-CZ',uk:'uk-UA',tr:'tr-TR',ar:'ar-SA',he:'he-IL',hi:'hi-IN',id:'id-ID',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',th:'th-TH',vi:'vi-VN',ro:'ro-RO',hu:'hu-HU',el:'el-GR',bg:'bg-BG',sk:'sk-SK',sl:'sl-SI',hr:'hr-HR',lt:'lt-LT',ta:'ta-IN',te:'te-IN',mr:'mr-IN',kn:'kn-IN'};
+const speechLocale=lang=>SPEECH_LANG[lang]||lang;
 async function translateText(text,source,target){
  if(!text.trim())return '';
  if(source===target)return text;
@@ -197,7 +199,7 @@ async function startSpeechRecognition(){
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!SR){toast('Распознавание речи недоступно в этом браузере');return}
  speechRecognition=new SR();
- speechRecognition.lang=translationSource+'-'+(translationSource==='en'?'US':'RU');
+ speechRecognition.lang=speechLocale(translationSource);
  speechRecognition.continuous=true;
  speechRecognition.interimResults=true;
  speechRecognition.maxAlternatives=1;
@@ -209,7 +211,7 @@ async function startSpeechRecognition(){
    const msg={kind:'translation',from:liveUserId,text:finalText,source:translationSource};
    await liveChannel.send({type:'broadcast',event:'signal',payload:msg});
    const local=await translateText(finalText,translationSource,translationTarget);
-   if(local){showTranslation(local);speakTranslated(local,translationTarget)}
+   if(local){showTranslation(local);if(liveRole!=='host')speakTranslated(local,translationTarget)}
  };
  speechRecognition.onstart=()=>{speechRunning=true;const s=document.querySelector('#translateStatus');if(s)s.textContent='● Речь распознаётся'};
  speechRecognition.onend=()=>{speechRunning=false;if(liveRole==='host')setTimeout(()=>{try{speechRecognition.start()}catch{}},250)};
