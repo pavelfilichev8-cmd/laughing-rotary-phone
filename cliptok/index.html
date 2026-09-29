@@ -386,4 +386,23 @@ window.searchTag=async tag=>{const clean=String(tag).replace(/^#/,'').trim();con
 window.installApp=()=>{if(window.__deferredPrompt){window.__deferredPrompt.prompt();window.__deferredPrompt=null}else toast('Браузер уже установил приложение или не поддерживает установку')};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__deferredPrompt=e});
 window.addEventListener('appinstalled',()=>toast('ClipTok установлен'));
+
+// LIVE reliability: host heartbeat every 15s.
+let __liveHeartbeatTimer=null;
+async function __clipTokLiveHeartbeat(){
+  try{
+    if(!session?.user?.id || !liveRoom?.id || liveRole!=='host') return;
+    const {error}=await supabase.from('live_rooms').update({last_seen_at:new Date().toISOString(),status:'live'}).eq('id',liveRoom.id).eq('host_id',session.user.id).eq('status','live');
+    if(error) console.warn('live heartbeat',error);
+  }catch(e){console.warn('live heartbeat',e)}
+}
+function __startLiveHeartbeat(){if(__liveHeartbeatTimer)clearInterval(__liveHeartbeatTimer);__clipTokLiveHeartbeat();__liveHeartbeatTimer=setInterval(__clipTokLiveHeartbeat,15000)}
+function __stopLiveHeartbeat(){if(__liveHeartbeatTimer){clearInterval(__liveHeartbeatTimer);__liveHeartbeatTimer=null}}
+const __oldStartLive=window.startLive;
+window.startLive=async function(...args){const result=await __oldStartLive?.apply(this,args);setTimeout(()=>{if(liveRoom?.id&&liveRole==='host')__startLiveHeartbeat()},1000);return result};
+const __oldEndLive=window.endLive;
+window.endLive=async function(...args){__stopLiveHeartbeat();return await __oldEndLive?.apply(this,args)};
+window.addEventListener('pagehide',()=>{if(liveRoom?.id&&liveRole==='host')__clipTokLiveHeartbeat()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&liveRoom?.id&&liveRole==='host')__clipTokLiveHeartbeat()});
+
 </script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}</script><script type="module" src="./production.js"></script></body></html></body></html>
