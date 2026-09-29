@@ -75,7 +75,7 @@ async function showTab(tab){
 window.show=showTab;
 async function renderExplore(){const r=await supabase.from('videos').select('*,profiles(username,display_name)').eq('status','published').order('views_count',{ascending:false}).limit(24);const list=r.data?.length?r.data:demo;document.querySelector('#root').innerHTML='<section class="page"><h1>Explore</h1><p class="muted">Тренды и новые публикации.</p><div class="video-grid">'+list.map(v=>'<div class="video-tile">'+(v.video_url?'<video src="'+esc(v.video_url)+'" muted controls></video>':'<div class="visual"></div><div class="brandmark" style="top:45%">CLIP<span>TOK</span></div>')+'<div class="veil"><b>'+esc(v.caption)+'</b><div class="muted">@'+esc(v.profiles?.username||'creator')+' · '+fmt(v.views_count)+' просмотров</div></div></div>').join('')+'</div></section>'}
 
-let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnections=new Map(),pendingIce=new Map(),liveUserId=null;
+let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnections=new Map(),pendingIce=new Map(),liveUserId=null; Object.defineProperty(window,'liveRoom',{configurable:true,get:()=>liveRoom});
 
 async function renderLive(){
  const r=await supabase.from('live_rooms').select('*,profiles(username,display_name,avatar_url,verified)').eq('status','live').order('created_at',{ascending:false}).limit(30);
