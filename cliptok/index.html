@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><link rel="manifest" href="./manifest.webmanifest"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ClipTok — Future Video Network</title>
 <style>
 :root{--bg:#05060a;--panel:#0d1018;--panel2:#151a26;--line:#283043;--muted:#8991a8;--a:#5cecff;--b:#8a62ff;--c:#ff5db9}
@@ -319,4 +319,4 @@ function startGlobalRealtime(){if(!session)return;if(window.__notifChannel)supab
 const baseInit=initSession;initSession=async()=>{await baseInit();if(session)startGlobalRealtime()};window.initSession=initSession;
 window.forgotPassword=async()=>{const email=document.querySelector('#authEmail')?.value.trim();if(!email)return toast('Введите email');const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)toast(error.message);else toast('Ссылка отправлена на почту')};
 const baseAuth=authRequired;authRequired=()=>{baseAuth();const m=document.querySelector('#authModal .modal');if(m&&!m.querySelector('.forgot'))m.insertAdjacentHTML('beforeend','<button class="ghost full forgot" onclick="window.forgotPassword()">Восстановить пароль</button>')};window.authRequired=authRequired;
-</script></body></html></body></html>
+</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}</script></body></html></body></html>
