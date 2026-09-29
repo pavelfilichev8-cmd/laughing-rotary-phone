@@ -110,7 +110,7 @@ async function openLiveRoom(roomId,isHost=false){
  const controls='<button class="ghost live-action" onclick="window.toggleLiveMic()" id="liveMicBtn">🎤 Микрофон</button><button class="ghost live-action" onclick="window.toggleLiveCamera()" id="liveCamBtn">📷 Камера</button><button class="ghost live-action" onclick="window.switchLiveCamera()" id="liveSwitchBtn">🔄 Камера</button>'+(isHost ? '<button class="danger live-action live-end" onclick="window.endLive()">🔴 Завершить эфир</button>' : '<button class="danger live-action" onclick="window.leaveLive()">🚪 Выйти из эфира</button>');
  const chatInput=session ? '<input id="liveChatInput" class="grow" placeholder="Написать сообщение…">' : '<input id="liveChatInput" class="grow" placeholder="Войдите для чата" disabled>';
  document.querySelector('#root').innerHTML =
-   '<section class="page"><div class="row"><div><div class="live-badge">● LIVE</div><h1>'+esc(liveRoom.title)+'</h1><p class="muted">@'+esc(liveRoom.profiles?.username||'creator')+' · '+esc(liveRoom.category||'general')+'</p></div><div class="grow"></div><button class="ghost" onclick="window.show(\'live\')">← LIVE</button></div>'+
+   '<section class="page"><div class="row"><div><div class="live-badge">● LIVE</div><h1>'+esc(liveRoom.title)+'</h1><p class="muted">@'+esc(liveRoom.profiles?.username||'creator')+' · '+esc(liveRoom.category||'general')+'</p></div><div class="grow"></div><button class="ghost" onclick="window.exitLiveRoom()">← LIVE</button></div>'+
    '<div class="live-layout"><div><div class="live-player" id="liveStage">'+media+'</div><div class="live-controls"><span class="live-stat" id="viewerCount">● 1 зритель</span><span class="live-stat">Realtime</span>'+controls+'</div>'+
    translationPanel(isHost)+
    '</div><div class="card live-chat"><h3>Чат эфира</h3><div id="liveChatList" class="live-chat-list">'+(messages||'<div class="empty">Чат пуст.</div>')+'</div><div class="row">'+chatInput+'<button class="primary" onclick="window.sendLiveChat()">Отправить</button></div></div></div></section>';
@@ -219,6 +219,11 @@ window.switchLiveCamera=async()=>{
   const v=document.querySelector('#localLiveVideo');if(v)v.srcObject=localStream;
   toast(next==='environment'?'Задняя камера':'Фронтальная камера');
  }catch(e){toast('Не удалось переключить камеру: '+(e.message||e.name))}
+};
+window.exitLiveRoom=async()=>{
+  if(liveRole==='host'&&liveRoom){ await window.endLive(); return; }
+  if(liveRoom){ await window.leaveLive(); return; }
+  await window.show('live');
 };
 window.leaveLive=async()=>{if(!liveRoom)return;await cleanupLiveConnection({closeView:true});toast('Вы вышли из эфира')};
 window.endLive=async()=>{
