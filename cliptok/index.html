@@ -53,6 +53,15 @@ function videoHTML(v){
  return `<article class="video">${media}<div class="gradient"></div><div class="info"><b>@${esc(p.username||'creator')}${p.verified?' ✓':''}</b><h2>${esc(v.caption||'Без описания')}</h2><p>♬ ${esc(v.music_name||'Original sound')}</p></div><div class="actions"><button class="${liked.has(v.id)?'hot':''}" onclick="window.toggleLike('${v.id}')">♥<em>${fmt(v.likes_count)}</em></button><button onclick="window.openComments('${v.id}')">●<em>${fmt(v.comments_count)}</em></button><button class="${saved.has(v.id)?'hot':''}" onclick="window.toggleSave('${v.id}')">▣<em>Сохранить</em></button><button onclick="window.shareVideo('${v.id}')">↗<em>Share</em></button></div></article>`;
 }
 async function showTab(tab){
+ if(liveRoom && tab!=='live'){
+   try{
+     if(liveRole==='host' && session && liveRoom.host_id===session.user.id){
+       await window.endLive();
+     }else{
+       await window.leaveLive();
+     }
+   }catch(e){console.warn('LIVE exit on navigation failed',e)}
+ }
  currentTab=tab;
  document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.tab===tab)});
  const root=document.querySelector('#root');
@@ -234,7 +243,15 @@ window.endLive=async()=>{
  try{await supabase.from('live_streams').update({status:'ended',ended_at:endedAt}).eq('room_id',roomId)}catch{}
  await cleanupLiveConnection({closeView:true});toast('Эфир завершён');
 };
-window.addEventListener('pagehide',()=>{try{localStream?.getTracks?.().forEach(t=>t.stop())}catch{};try{peerConnections.forEach(pc=>pc.close())}catch{}});
+window.addEventListener('pagehide',()=>{
+ try{
+   if(liveRoom&&liveRole==='host'&&session&&liveRoom.host_id===session.user.id&&session.access_token){
+     fetch(SUPABASE_URL+'/rest/v1/live_rooms?id=eq.'+encodeURIComponent(liveRoom.id),{method:'PATCH',keepalive:true,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'ended',ended_at:new Date().toISOString()})}).catch(()=>{});
+   }
+ }catch{}
+ try{localStream?.getTracks?.().forEach(t=>t.stop())}catch{}
+ try{peerConnections.forEach(pc=>pc.close())}catch{}
+});
 
 window.joinLive=async id=>{if(!session){authRequired();return}await openLiveRoom(id,false)};
 
