@@ -47,16 +47,27 @@ function updateAvatar(){document.querySelector('#avatarBtn').textContent=current
 async function loadSets(ids=[]){if(!session)return;const [l,s,f]=await Promise.all([supabase.from('likes').select('video_id').eq('user_id',session.user.id),supabase.from('saved_videos').select('video_id').eq('user_id',session.user.id),supabase.from('follows').select('following_id').eq('follower_id',session.user.id)]);liked=new Set((l.data||[]).map(x=>x.video_id));saved=new Set((s.data||[]).map(x=>x.video_id));following=new Set((f.data||[]).map(x=>x.following_id))}
 async function loadFeed(tab){let q=supabase.from('videos').select('*,profiles(id,username,display_name,avatar_url,verified)').eq('status','published').order('created_at',{ascending:false}).limit(30);if(tab==='following'){if(!session)return [];const f=await supabase.from('follows').select('following_id').eq('follower_id',session.user.id);const ids=(f.data||[]).map(x=>x.following_id);if(!ids.length)return [];q=q.in('user_id',ids)}const r=await q;return r.data||[]}
 function videoHTML(v){const p=v.profiles||{};return '<article class="video">'+(v.video_url?'<video src="'+esc(v.video_url)+'" playsinline loop autoplay muted controlslist="nodownload"></video>':'<div class="visual"></div><div class="brandmark">CLIP<span>TOK</span></div>')+'<div class="gradient"></div><div class="info"><b>@'+esc(p.username||'creator')+(p.verified?' ✓':'')+'</b><h2>'+esc(v.caption||'Без описания')+'</h2><p>♬ '+esc(v.music_name||'Original sound')+'</p></div><div class="actions"><button class="'+(liked.has(v.id)?'hot':'')+'" onclick="window.toggleLike(\''+v.id+'\')">♥<em>'+fmt(v.likes_count)+'</em></button><button onclick="window.openComments(\''+v.id+'\')">●<em>'+fmt(v.comments_count)+'</em></button><button class="'+(saved.has(v.id)?'hot':'')+'" onclick="window.toggleSave(\''+v.id+'\')">▣<em>Сохранить</em></button><button onclick="window.shareVideo(\''+v.id+'\')">↗<em>Share</em></button></div></article>'}
-window.show=async tab=>{currentTab=tab;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));const root=document.querySelector('#root');
-if(tab==='home'||tab==='following'){feedData=await loadFeed(tab);if(!feedData.length&&tab==='home')feedData=demo;await loadSets();root.innerHTML='<div class="feed">'+(feedData.length?feedData.map(videoHTML).join(''):'<div class="empty">Подписок пока нет.</div>')+'</div>';return}
-if(tab==='explore'){await renderExplore();return}
-if(tab==='live'){await renderLive();return}
-if(tab==='notifications'){await renderNotifications();return}
-if(tab==='saved'){await renderSaved();return}
-if(tab==='profile'){await renderProfile(currentProfile?.id);return}
-if(tab==='studio'){await renderStudio();return}
-if(tab==='messages'){await renderMessages();return}
-if(tab==='settings'){await renderSettings();return}};
+async function showTab(tab){
+ currentTab=tab;
+ document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.tab===tab)});
+ const root=document.querySelector('#root');
+ if(tab==='home'||tab==='following'){
+   feedData=await loadFeed(tab);
+   if(!feedData.length&&tab==='home') feedData=demo;
+   await loadSets();
+   root.innerHTML='<div class="feed">'+(feedData.length?feedData.map(videoHTML).join(''):'<div class="empty">Подписок пока нет.</div>')+'</div>';
+   return;
+ }
+ if(tab==='explore'){await renderExplore();return;}
+ if(tab==='live'){await renderLive();return;}
+ if(tab==='notifications'){await renderNotifications();return;}
+ if(tab==='saved'){await renderSaved();return;}
+ if(tab==='profile'){await renderProfile(currentProfile?.id);return;}
+ if(tab==='studio'){await renderStudio();return;}
+ if(tab==='messages'){await renderMessages();return;}
+ if(tab==='settings'){await renderSettings();return;}
+}
+window.show=showTab;
 async function renderExplore(){const r=await supabase.from('videos').select('*,profiles(username,display_name)').eq('status','published').order('views_count',{ascending:false}).limit(24);const list=r.data?.length?r.data:demo;document.querySelector('#root').innerHTML='<section class="page"><h1>Explore</h1><p class="muted">Тренды и новые публикации.</p><div class="video-grid">'+list.map(v=>'<div class="video-tile">'+(v.video_url?'<video src="'+esc(v.video_url)+'" muted controls></video>':'<div class="visual"></div><div class="brandmark" style="top:45%">CLIP<span>TOK</span></div>')+'<div class="veil"><b>'+esc(v.caption)+'</b><div class="muted">@'+esc(v.profiles?.username||'creator')+' · '+fmt(v.views_count)+' просмотров</div></div></div>').join('')+'</div></section>'}
 
 let liveChannel=null,liveRoom=null,localStream=null,liveRole=null,peerConnections=new Map(),pendingIce=new Map(),liveUserId=null;
