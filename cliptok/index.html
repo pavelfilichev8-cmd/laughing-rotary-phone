@@ -46,7 +46,28 @@ async function loadProfile(){const r=await supabase.from('profiles').select('*')
 function updateAvatar(){document.querySelector('#avatarBtn').textContent=currentProfile?.display_name?.slice(0,2).toUpperCase()||'?'}
 async function loadSets(ids=[]){if(!session)return;const [l,s,f]=await Promise.all([supabase.from('likes').select('video_id').eq('user_id',session.user.id),supabase.from('saved_videos').select('video_id').eq('user_id',session.user.id),supabase.from('follows').select('following_id').eq('follower_id',session.user.id)]);liked=new Set((l.data||[]).map(x=>x.video_id));saved=new Set((s.data||[]).map(x=>x.video_id));following=new Set((f.data||[]).map(x=>x.following_id))}
 async function loadFeed(tab){let q=supabase.from('videos').select('*,profiles(id,username,display_name,avatar_url,verified)').eq('status','published').order('created_at',{ascending:false}).limit(30);if(tab==='following'){if(!session)return [];const f=await supabase.from('follows').select('following_id').eq('follower_id',session.user.id);const ids=(f.data||[]).map(x=>x.following_id);if(!ids.length)return [];q=q.in('user_id',ids)}const r=await q;return r.data||[]}
-function videoHTML(v){const p=v.profiles||{};return '<article class="video">'+(v.video_url?'<video src="'+esc(v.video_url)+'" playsinline loop autoplay muted controlslist="nodownload"></video>':'<div class="visual"></div><div class="brandmark">CLIP<span>TOK</span></div>')+'<div class="gradient"></div><div class="info"><b>@'+esc(p.username||'creator')+(p.verified?' ✓':'')+'</b><h2>'+esc(v.caption||'Без описания')+'</h2><p>♬ '+esc(v.music_name||'Original sound')+'</p></div><div class="actions"><button class="'+(liked.has(v.id)?'hot':'')+'" onclick="window.toggleLike(\''+v.id+'\')">♥<em>'+fmt(v.likes_count)+'</em></button><button onclick="window.openComments(\''+v.id+'\')">●<em>'+fmt(v.comments_count)+'</em></button><button class="'+(saved.has(v.id)?'hot':'')+'" onclick="window.toggleSave(\''+v.id+'\')">▣<em>Сохранить</em></button><button onclick="window.shareVideo(\''+v.id+'\')">↗<em>Share</em></button></div></article>'}
+function videoHTML(v){
+ const p=v.profiles||{};
+ const media=v.video_url
+   ? '<video src="'+esc(v.video_url)+'" playsinline loop autoplay muted controlslist="nodownload"></video>'
+   : '<div class="visual"></div><div class="brandmark">CLIP<span>TOK</span></div>';
+ return \`
+ <article class="video">
+   \${media}
+   <div class="gradient"></div>
+   <div class="info">
+     <b>@\${esc(p.username||'creator')}\${p.verified?' ✓':''}</b>
+     <h2>\${esc(v.caption||'Без описания')}</h2>
+     <p>♬ \${esc(v.music_name||'Original sound')}</p>
+   </div>
+   <div class="actions">
+     <button class="\${liked.has(v.id)?'hot':''}" onclick="window.toggleLike('\${v.id}')">♥<em>\${fmt(v.likes_count)}</em></button>
+     <button onclick="window.openComments('\${v.id}')">●<em>\${fmt(v.comments_count)}</em></button>
+     <button class="\${saved.has(v.id)?'hot':''}" onclick="window.toggleSave('\${v.id}')">▣<em>Сохранить</em></button>
+     <button onclick="window.shareVideo('\${v.id}')">↗<em>Share</em></button>
+   </div>
+ </article>\`;
+}
 async function showTab(tab){
  currentTab=tab;
  document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.tab===tab)});
