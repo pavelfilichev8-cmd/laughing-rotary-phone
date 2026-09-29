@@ -185,3 +185,29 @@ async function connectSfu(roomId,role='viewer'){
 window.connectSfu=connectSfu;
 window.__cliptokProd={sb,boot,renderAnalyticsPro,renderMessagesPro,connectSfu};
 boot().then(patchMessagesNav);
+
+
+function installAnalyticsNav(){
+ const nav=$('#nav'); if(!nav||nav.querySelector('[data-tab="analytics"]'))return;
+ nav.insertAdjacentHTML('beforeend','<button data-tab="analytics" onclick="window.showAnalytics()"><i>▥</i>Аналитика</button>');
+}
+const oldUpload=window.uploadVideo;
+if(oldUpload){
+ window.uploadVideo=async()=>{
+   await oldUpload();
+   if(!me)return;
+   const latest=await sb.from('videos').select('id,video_url').eq('user_id',me.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+   if(latest.data) requestAiModeration(latest.data.id,latest.data.video_url);
+ };
+}
+const rootObserver=new MutationObserver(()=>{
+ installAdminNav();installAnalyticsNav();
+ const lp=$('.live-player');
+ if(lp&&!lp.querySelector('.prod-live-tools')){
+   const d=document.createElement('div');d.className='prod-live-tools live-controls';
+   d.innerHTML='<span class="live-stat">AI LIVE</span><button class="ghost" onclick="window.liveSpeechTranslate(\'en\')">CC + перевод</button><button class="ghost" onclick="window.connectSfu(\''+(window.liveRoom?.id||'')+'\',\'viewer\')">⚡ SFU</button>';
+   lp.parentElement?.appendChild(d);
+ }
+});
+rootObserver.observe($('#root')||document.body,{childList:true,subtree:true});
+installAnalyticsNav();
