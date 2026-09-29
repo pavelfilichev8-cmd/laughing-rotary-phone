@@ -1,0 +1,10 @@
+{
+  "name": "ClipTok",
+  "short_name": "ClipTok",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#05060a",
+  "theme_color": "#8a62ff",
+  "description": "ClipTok — short videos, LIVE and realtime creator network",
+  "icons": []
+}
